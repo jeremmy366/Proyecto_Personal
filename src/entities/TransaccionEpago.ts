@@ -1,44 +1,73 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
-import { Paciente } from "./Paciente";
 import { Cajero } from "./Cajero";
 
-@Entity({ name: 'FIN_TRANSACCIONES_EPAGO' })
+@Entity({ name: 'FAC_TRANSACCIONES_EPAGO' })
 export class TransaccionEpago {
-    @PrimaryGeneratedColumn({ name: 'ID_TRANSACCION' })
-    idTransaccion!: number;
+    // Clave primaria generada por secuencia
+    @PrimaryGeneratedColumn({
+        name: 'CODIGO_EPAGO',
+        type: 'number'
+    })
+    codigoEpago!: number;
 
-    @ManyToOne(() => Paciente)
-    @JoinColumn({ name: 'ID_PACIENTE' })
-    paciente!: Paciente;
+    // Fecha de la transacción
+    @Column({
+        name: 'FECHA_SOLICITUD',
+        type: 'timestamp'
+    })
+    fechaSolicitud!: Date;
 
+    // Relación con Cajero (secuencia_cajero)
     @ManyToOne(() => Cajero)
-    @JoinColumn({ name: 'ID_CAJERO' })
+    @JoinColumn({ name: 'SECUENCIA_CAJERO' }) // Nombre exacto de la columna en FAC_TRANSACCIONES_EPAGO
     cajero!: Cajero;
 
-    @Column({ name: 'MONTO', type: 'decimal', precision: 10, scale: 2 })
-    monto!: number;
+    // Valor de la transacción
+    @Column({
+        name: 'VALOR',
+        type: 'number'
+    })
+    valor!: number;
 
-    @Column({ name: 'FECHA_TRANSACCION' })
-    fechaTransaccion!: Date;
-
-    @Column({ name: 'TIPO_PAGO', length: 20 })
-    tipoPago!: string;
-
-    @Column({ name: 'REFERENCIA', length: 50 })
-    referencia!: string;
-
-    @Column({ name: 'ESTADO', length: 1, default: 'P' })
+    // Estado (S=Activo, N=Inactivo)
+    @Column({
+        name: 'ESTADO',
+        type: 'varchar2',
+        length: 1,
+        default: 'S'
+    })
     estado!: string;
 
-    @Column({ name: 'FECHA_INGRESO' })
+    // Auditoría: Fecha de ingreso
+    @Column({
+        name: 'FECHA_INGRESO',
+        type: 'timestamp',
+        default: () => 'SYSDATE'
+    })
     fechaIngreso!: Date;
 
-    @Column({ name: 'USUARIO_INGRESO', length: 20 })
+    // Auditoría: Usuario que creó el registro
+    @Column({
+        name: 'USUARIO_INGRESO',
+        type: 'varchar2',
+        length: 50
+    })
     usuarioIngreso!: string;
 
-    @Column({ name: 'FECHA_MODIFICACION', nullable: true })
+    // Auditoría: Fecha de modificación (nullable)
+    @Column({
+        name: 'FECHA_MODIFICACION',
+        type: 'timestamp',
+        nullable: true
+    })
     fechaModificacion!: Date | null;
 
-    @Column({ name: 'USUARIO_MODIFICACION', nullable: true, length: 20 })
+    // Auditoría: Usuario que modificó el registro (nullable)
+    @Column({
+        name: 'USUARIO_MODIFICACION',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
     usuarioModificacion!: string | null;
 }

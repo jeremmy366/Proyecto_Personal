@@ -2,14 +2,36 @@ import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth';
 import { checkRole } from '../middlewares/auth';
 import { PacienteController } from '../controllers/PacienteController';
-import upload from '../utils/upload'; // Ruta corregida
+import upload from '../utils/upload';
 
 const router = Router();
 
 /**
- * @route POST /agendamiento/pacientes
- * @description Crear nuevo paciente
- * @access Privado (solo usuarios con rol 'admin' o 'recepcionista')
+ * @swagger
+ * /agendamiento/pacientes:
+ *   post:
+ *     description: Crear un nuevo paciente, incluye subida de foto
+ *     parameters:
+ *       - in: body
+ *         name: paciente
+ *         description: Datos del paciente
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             nombre:
+ *               type: string
+ *             edad:
+ *               type: integer
+ *       - in: formData
+ *         name: foto
+ *         type: file
+ *         description: Foto del paciente
+ *     responses:
+ *       200:
+ *         description: Paciente creado correctamente
+ *       400:
+ *         description: Error de validación
  */
 router.post(
     '/',
@@ -20,9 +42,13 @@ router.post(
 );
 
 /**
- * @route GET /agendamiento/pacientes
- * @description Listar pacientes con filtros
- * @access Privado (solo roles 'medico', 'admin')
+ * @swagger
+ * /agendamiento/pacientes:
+ *   get:
+ *     description: Listar pacientes con filtros
+ *     responses:
+ *       200:
+ *         description: Lista de pacientes
  */
 router.get(
     '/',
@@ -32,9 +58,18 @@ router.get(
 );
 
 /**
- * @route GET /agendamiento/pacientes/:id
- * @description Obtener detalle de paciente por ID
- * @access Privado (todos los roles autenticados)
+ * @swagger
+ * /agendamiento/pacientes/{id}:
+ *   get:
+ *     description: Obtener un paciente por su ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: Información del paciente
  */
 router.get(
     '/:id',
@@ -43,9 +78,24 @@ router.get(
 );
 
 /**
- * @route PUT /agendamiento/pacientes/:id
- * @description Actualizar información de paciente
- * @access Privado (solo 'admin')
+ * @swagger
+ * /agendamiento/pacientes/{id}:
+ *   put:
+ *     description: Actualizar información de un paciente, incluyendo foto
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *       - in: formData
+ *         name: foto
+ *         type: file
+ *         description: Foto del paciente
+ *     responses:
+ *       200:
+ *         description: Paciente actualizado correctamente
+ *       400:
+ *         description: Error de validación
  */
 router.put(
     '/:id',
@@ -56,9 +106,18 @@ router.put(
 );
 
 /**
- * @route DELETE /agendamiento/pacientes/:id
- * @description Eliminar lógico de paciente
- * @access Privado (solo 'admin')
+ * @swagger
+ * /agendamiento/pacientes/{id}:
+ *   delete:
+ *     description: Eliminar (desactivar) un paciente
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: Paciente desactivado correctamente
  */
 router.delete(
     '/:id',
@@ -67,14 +126,24 @@ router.delete(
     PacienteController.eliminarPaciente
 );
 
-// Rutas adicionales
-router.get(
-    '/historial/:id',
-    authMiddleware,
-    checkRole('medico', 'admin'),
-    PacienteController.obtenerHistorialMedico
-);
-
+/**
+ * @swagger
+ * /agendamiento/pacientes/{id}/foto:
+ *   post:
+ *     description: Subir o actualizar foto de un paciente
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         type: string
+ *       - in: formData
+ *         name: foto
+ *         type: file
+ *         description: Foto del paciente
+ *     responses:
+ *       200:
+ *         description: Foto subida o actualizada correctamente
+ */
 router.post(
     '/:id/foto',
     authMiddleware,

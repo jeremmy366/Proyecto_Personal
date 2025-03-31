@@ -2,31 +2,76 @@ import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity({ name: 'DAF_USUARIOS_SISTEMA' })
 export class UsuarioSistema {
-  @PrimaryGeneratedColumn({ name: 'SECUENCIA_USUARIO' })
-  secuenciaUsuario!: number;
+    // Campo secuencia (clave primaria)
+    @PrimaryGeneratedColumn({
+        name: 'SECUENCIA_USUARIO',
+        type: 'number'
+    })
+    secuenciaUsuario!: number;
 
-  @Column({ name: 'CODIGO_USUARIO' })
-  codigoUsuario!: string;
+    // Código de usuario (ej: 'VERIS')
+    @Column({
+        name: 'CODIGO_USUARIO',
+        type: 'varchar2',
+        length: 50
+    })
+    codigoUsuario!: string;
 
-  @Column({ name: 'CORREO_ELECTRONICO' })
-  correoElectronico!: string;
+    // Correo electrónico
+    @Column({
+        name: 'CORREO_ELECTRONICO',
+        type: 'varchar2',
+        length: 100
+    })
+    correoElectronico!: string;
 
-  @Column({ name: 'CLAVE' })
-  clave!: string;
+    // Clave de acceso
+    @Column({
+        name: 'CLAVE',
+        type: 'varchar2',
+        length: 100
+    })
+    clave!: string;
 
-  @Column({ name: 'ESTADO', length: 1 })
-  estado!: string;
+    // Estado (S=Activo, N=Inactivo)
+    @Column({
+        name: 'ESTADO',
+        type: 'varchar2',
+        length: 1,
+        default: 'S'
+    })
+    estado!: string;
 
-  // Campos de auditoría
-  @Column({ name: 'FECHA_INGRESO' })
-  fechaIngreso!: Date;
+    // Auditoría: Fecha de ingreso
+    @Column({
+        name: 'FECHA_INGRESO',
+        type: 'timestamp',
+        default: () => 'SYSDATE'
+    })
+    fechaIngreso!: Date;
 
-  @Column({ name: 'USUARIO_INGRESO' })
-  usuarioIngreso!: string;
+    // Auditoría: Usuario que creó el registro
+    @Column({
+        name: 'USUARIO_INGRESO',
+        type: 'varchar2',
+        length: 50
+    })
+    usuarioIngreso!: string;
 
-  @Column({ name: 'FECHA_MODIFICACION', nullable: true })
-  fechaModificacion!: Date | null;
+    // Auditoría: Fecha de modificación (nullable)
+    @Column({
+        name: 'FECHA_MODIFICACION',
+        type: 'timestamp',
+        nullable: true
+    })
+    fechaModificacion!: Date | null;
 
-  @Column({ name: 'USUARIO_MODIFICACION', nullable: true })
-  usuarioModificacion!: string | null;
+    // Auditoría: Usuario que modificó el registro (nullable)
+    @Column({
+        name: 'USUARIO_MODIFICACION',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
+    usuarioModificacion!: string | null;
 }

@@ -4,9 +4,11 @@ import { Paciente } from '../entities/Paciente';
 import { QueryRunner } from 'typeorm';
 
 export class PacienteController {
+    // Crear nuevo paciente
     static async crearPaciente(req: Request, res: Response): Promise<void> {
         try {
             const pacienteData = req.body;
+
             const paciente = AppDataSource.getRepository(Paciente).create({
                 ...pacienteData,
                 estado: 'S',
@@ -21,71 +23,52 @@ export class PacienteController {
         }
     }
 
+    // Listar pacientes con filtros
     static async listarPacientes(req: Request, res: Response): Promise<void> {
         try {
-            const { nombre, estado } = req.query;
+            const { nombreCompleto, estado } = req.query;
 
-            // Aseguramos que estado sea un string y nombre también
-            const estadoQuery = typeof estado === 'string' ? estado : undefined;
-            const nombreQuery = typeof nombre === 'string' ? `%${nombre}%` : undefined;
+            const query = AppDataSource.getRepository(Paciente)
+                .createQueryBuilder('p')
+                .leftJoinAndSelect('p.tipoIdentificacion', 'tipoIdentificacion');
 
-            const pacientes = await AppDataSource.getRepository(Paciente).find({
-                where: {
-                    nombre: nombreQuery,  // Aquí usamos el nombre procesado
-                    estado: estadoQuery   // Aquí usamos el estado procesado
-                }
-            });
+            if (nombreCompleto) {
+                query.andWhere('p.nombreCompleto LIKE :nombre', {
+                    nombre: `%${nombreCompleto}%`
+                });
+            }
 
+            if (estado) {
+                query.andWhere('p.estado = :estado', { estado });
+            }
+
+            const pacientes = await query.getMany();
             res.status(200).json(pacientes);
         } catch (error) {
             res.status(500).json({ error: 'Error al listar pacientes' });
         }
     }
 
-    static async obtenerHistorialMedico(req: Request, res: Response): Promise<void> {
-        try {
-            const { id } = req.params;
-            // Lógica para obtener historial médico del paciente por ID
-            const historial = await AppDataSource.getRepository(Paciente)
-                .createQueryBuilder('p')
-                .leftJoinAndSelect('p.historialMedico', 'historial')  // Suponiendo que tienes una relación de historial médico
-                .where('p.idPaciente = :id', { id })
-                .getOne();
-
-            if (!historial) {
-                res.status(404).json({ error: 'Historial no encontrado' });
-                return;  // Terminamos la ejecución aquí para no continuar
-            }
-
-            res.status(200).json(historial);
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                res.status(500).json({ error: error.message || 'Error al obtener historial médico' });
-            } else {
-                res.status(500).json({ error: 'Error desconocido' });
-            }
-        }
-    }
-
-    static async obtenerPacientePorId(req: Request, res: Response) {
+    // Obtener paciente por ID
+    static async obtenerPacientePorId(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
             const paciente = await AppDataSource.getRepository(Paciente).findOneOrFail({
                 where: { idPaciente: parseInt(id) },
-                relations: { tipoIdentificacion: true }
+                relations: ['tipoIdentificacion']
             });
-
             res.status(200).json(paciente);
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(500).json({ error: `Error al obtener paciente: ${error.message}` });
+                res.status(404).json({ error: `Paciente no encontrado: ${error.message}` });
             } else {
                 res.status(500).json({ error: 'Error desconocido' });
             }
         }
     }
 
-    static async actualizarPaciente(req: Request, res: Response) {
+    // Actualizar paciente
+    static async actualizarPaciente(req: Request, res: Response): Promise<void> {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -94,34 +77,47 @@ export class PacienteController {
             const { id } = req.params;
             const pacienteRepo = queryRunner.manager.getRepository(Paciente);
             const paciente = await pacienteRepo.findOneOrFail({
-                where: { idPaciente: parseInt(id) },
+                where: { idPaciente: parseInt(id) }
             });
 
-            const { nombre, apellido, numeroIdentificacion } = req.body;
-            paciente.nombre = nombre || paciente.nombre;
-            paciente.apellido = apellido || paciente.apellido;
-            paciente.numeroIdentificacion = numeroIdentificacion || paciente.numeroIdentificacion;
+            // Campos actualizables
+            const camposPermitidos = [
+                'primerNombre',
+                'segundoNombre',
+                'primerApellido',
+                'segundoApellido',
+                'nombreCompleto',
+                'numeroIdentificacion',
+                'email'
+            ];
 
+            camposPermitidos.forEach(campo => {
+                if (req.body[campo] !== undefined) {
+                    (paciente as any)[campo] = req.body[campo];
+                }
+            });
+
+            // Auditoría
             paciente.fechaModificacion = new Date();
             paciente.usuarioModificacion = (req as any).user.userId;
 
             await queryRunner.manager.save(paciente);
             await queryRunner.commitTransaction();
-
             res.status(200).json(paciente);
         } catch (error: unknown) {
+            await queryRunner.rollbackTransaction();
             if (error instanceof Error) {
-                await queryRunner.rollbackTransaction();
-                res.status(400).json({ error: error.message || 'Error al actualizar' });
+                res.status(400).json({ error: error.message });
             } else {
-                res.status(400).json({ error: 'Error desconocido' });
+                res.status(500).json({ error: 'Error desconocido' });
             }
         } finally {
             await queryRunner.release();
         }
     }
 
-    static async eliminarPaciente(req: Request, res: Response) {
+    // Eliminar lógico
+    static async eliminarPaciente(req: Request, res: Response): Promise<void> {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -129,50 +125,56 @@ export class PacienteController {
         try {
             const { id } = req.params;
             const pacienteRepo = queryRunner.manager.getRepository(Paciente);
-            const paciente = await pacienteRepo.findOneOrFail({ where: { idPaciente: parseInt(id) } });
+            const paciente = await pacienteRepo.findOneOrFail({
+                where: { idPaciente: parseInt(id) }
+            });
 
-            if (paciente.estado === 'I') throw new Error('Paciente ya está inactivo');
+            if (paciente.estado === 'N') {
+                throw new Error('El paciente ya está inactivo');
+            }
 
-            paciente.estado = 'I';
+            paciente.estado = 'N';
             paciente.fechaModificacion = new Date();
             paciente.usuarioModificacion = (req as any).user.userId;
 
             await queryRunner.manager.save(paciente);
             await queryRunner.commitTransaction();
-
-            res.status(200).json({ message: 'Paciente desactivado correctamente' });
+            res.status(200).json({ message: 'Paciente desactivado' });
         } catch (error: unknown) {
+            await queryRunner.rollbackTransaction();
             if (error instanceof Error) {
-                await queryRunner.rollbackTransaction();
-                res.status(400).json({ error: error.message || 'Error al eliminar' });
+                res.status(400).json({ error: error.message });
             } else {
-                res.status(400).json({ error: 'Error desconocido' });
+                res.status(500).json({ error: 'Error desconocido' });
             }
         } finally {
             await queryRunner.release();
         }
     }
 
+    // Subir foto (actualiza ruta_foto)
     static async subirFoto(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const paciente = await AppDataSource.getRepository(Paciente).findOne({
+            const paciente = await AppDataSource.getRepository(Paciente).findOneOrFail({
                 where: { idPaciente: parseInt(id) }
             });
 
-            if (!paciente) {
-                res.status(404).json({ error: 'Paciente no encontrado' });
-                return;  // Terminamos la ejecución aquí
+            if (!req.file) {
+                res.status(400).json({ error: 'Archivo no válido' });
+                return;
             }
 
-            // Lógica para actualizar la foto del paciente
-            paciente.foto = req.file?.filename;  // Suponiendo que tienes un campo 'foto' en la entidad
+            paciente.rutaFoto = `/fotos/${req.file.filename}`;
             await AppDataSource.getRepository(Paciente).save(paciente);
 
-            res.status(200).json({ message: 'Foto actualizada correctamente', filename: req.file?.filename });
+            res.status(200).json({
+                message: 'Foto actualizada',
+                rutaFoto: paciente.rutaFoto
+            });
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(500).json({ error: error.message || 'Error al subir foto' });
+                res.status(500).json({ error: error.message });
             } else {
                 res.status(500).json({ error: 'Error desconocido' });
             }

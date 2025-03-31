@@ -7,20 +7,33 @@ import { errorHandler } from './middlewares/errorHandler';
 import { authMiddleware } from './middlewares/auth';
 import dotenv from 'dotenv';
 import path from 'path';
-import upload from './utils/upload'; // Importación corregida
+import upload from './utils/upload';
+
+import { setupSwagger } from './config/swagger';  
 
 dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rutas estáticas
+
+setupSwagger(app); 
+
+
 app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
 
-// Rutas de salud
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     description: Verifica que la API esté funcionando correctamente
+ *     responses:
+ *       200:
+ *         description: API está funcionando
+ */
+
 app.get('/health', (req: Request, res: Response) => {
     res.sendStatus(200);
 });

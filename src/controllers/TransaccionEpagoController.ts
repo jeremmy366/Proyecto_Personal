@@ -1,39 +1,36 @@
 import { Request, Response } from 'express';
 import { AppDataSource } from '../config/database';
 import { TransaccionEpago } from '../entities/TransaccionEpago';
-import { Paciente } from '../entities/Paciente';
 import { Cajero } from '../entities/Cajero';
 import { QueryRunner } from 'typeorm';
 
 export class TransaccionEpagoController {
     // Crear nueva transacción
-    static async crearTransaccion(req: Request, res: Response) {
+    static async crearTransaccion(req: Request, res: Response): Promise<void> {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
 
         try {
-            const { idPaciente, idCajero, monto, tipoPago, referencia } = req.body;
+            const { secuenciaCajero, valor, tipoPago, referencia } = req.body;
 
-            // Validar existencia de paciente y cajero
-            const pacienteRepo = queryRunner.manager.getRepository(Paciente);
-            const cajeroRepo = queryRunner.manager.getRepository(Cajero);
+            // Validar existencia del cajero
+            const cajero = await queryRunner.manager.findOne(Cajero, {
+                where: { secuenciaCajero: secuenciaCajero }
+            });
 
-            const paciente = await pacienteRepo.findOneBy({ idPaciente });
-            if (!paciente) throw new Error('Paciente no encontrado');
-
-            const cajero = await cajeroRepo.findOneBy({ idCajero });
-            if (!cajero) throw new Error('Cajero no encontrado');
+            if (!cajero) {
+                throw new Error('Cajero no encontrado');
+            }
 
             // Crear transacción
             const transaccion = queryRunner.manager.create(TransaccionEpago, {
-                paciente,
-                cajero,
-                monto: parseFloat(monto),
-                tipoPago,
-                referencia,
+                cajero: cajero,
+                valor: valor,
+                tipoPago: tipoPago,
+                referencia: referencia,
+                fechaSolicitud: new Date(),
                 estado: 'P', // Pendiente por defecto
-                fechaTransaccion: new Date(),
                 fechaIngreso: new Date(),
                 usuarioIngreso: (req as any).user.userId
             });
@@ -42,17 +39,16 @@ export class TransaccionEpagoController {
             await queryRunner.commitTransaction();
 
             res.status(201).json({
-                idTransaccion: transaccion.idTransaccion,
+                codigoEpago: transaccion.codigoEpago,
                 estado: transaccion.estado,
-                monto: transaccion.monto
+                valor: transaccion.valor
             });
 
         } catch (error: unknown) {
+            await queryRunner.rollbackTransaction();
             if (error instanceof Error) {
-                await queryRunner.rollbackTransaction();
-                res.status(400).json({ error: error.message || 'Error al crear transacción' });
+                res.status(400).json({ error: error.message });
             } else {
-                await queryRunner.rollbackTransaction();
                 res.status(400).json({ error: 'Error desconocido' });
             }
         } finally {
@@ -60,27 +56,28 @@ export class TransaccionEpagoController {
         }
     }
 
-    // Obtener todas las transacciones con filtros
-    static async obtenerTransacciones(req: Request, res: Response) {
+    // Obtener transacciones con filtros
+    static async obtenerTransacciones(req: Request, res: Response): Promise<void> {
         try {
             const { estado, fechaInicio, fechaFin } = req.query;
-            const repo = AppDataSource.getRepository(TransaccionEpago);
 
-            const query = repo.createQueryBuilder('t')
-                .leftJoinAndSelect('t.paciente', 'paciente')
+            const query = AppDataSource.getRepository(TransaccionEpago)
+                .createQueryBuilder('t')
                 .leftJoinAndSelect('t.cajero', 'cajero')
                 .select([
-                    't.idTransaccion',
-                    't.monto',
+                    't.codigoEpago',
+                    't.valor',
                     't.estado',
-                    't.fechaTransaccion',
-                    'paciente.nombre',
-                    'cajero.nombre'
+                    't.fechaSolicitud',
+                    'cajero.secuenciaCajero'
                 ]);
 
-            if (estado) query.andWhere('t.estado = :estado', { estado });
+            if (estado) {
+                query.andWhere('t.estado = :estado', { estado });
+            }
+
             if (fechaInicio && fechaFin) {
-                query.andWhere('t.fechaTransaccion BETWEEN :inicio AND :fin', {
+                query.andWhere('t.fechaSolicitud BETWEEN :inicio AND :fin', {
                     inicio: fechaInicio,
                     fin: fechaFin
                 });
@@ -91,31 +88,34 @@ export class TransaccionEpagoController {
 
         } catch (error: unknown) {
             if (error instanceof Error) {
-                res.status(500).json({ error: error.message || 'Error al obtener transacciones' });
+                res.status(500).json({ error: error.message });
             } else {
                 res.status(500).json({ error: 'Error desconocido' });
             }
         }
     }
 
-    // Actualizar estado de transacción
-    static async actualizarEstado(req: Request, res: Response) {
+    // Actualizar estado de transacción (P → C = Completada)
+    static async actualizarEstado(req: Request, res: Response): Promise<void> {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
 
         try {
-            const { idTransaccion } = req.params;
+            const { codigoEpago } = req.params;
             const { estado } = req.body;
-            const repo = queryRunner.manager.getRepository(TransaccionEpago);
 
-            const transaccion = await repo.findOne({
-                where: { idTransaccion: parseInt(idTransaccion) },
-                lock: { mode: "optimistic", version: 1 } // Agregar version
+            const transaccion = await queryRunner.manager.findOne(TransaccionEpago, {
+                where: { codigoEpago: parseInt(codigoEpago) }
             });
 
-            if (!transaccion) throw new Error('Transacción no encontrada');
-            if (transaccion.estado === 'C') throw new Error('Transacción ya está completada');
+            if (!transaccion) {
+                throw new Error('Transacción no encontrada');
+            }
+
+            if (transaccion.estado === 'C') {
+                throw new Error('La transacción ya está completada');
+            }
 
             transaccion.estado = estado;
             transaccion.fechaModificacion = new Date();
@@ -125,16 +125,15 @@ export class TransaccionEpagoController {
             await queryRunner.commitTransaction();
 
             res.status(200).json({
-                idTransaccion: transaccion.idTransaccion,
+                codigoEpago: transaccion.codigoEpago,
                 nuevoEstado: transaccion.estado
             });
 
         } catch (error: unknown) {
+            await queryRunner.rollbackTransaction();
             if (error instanceof Error) {
-                await queryRunner.rollbackTransaction();
-                res.status(400).json({ error: error.message || 'Error al actualizar' });
+                res.status(400).json({ error: error.message });
             } else {
-                await queryRunner.rollbackTransaction();
                 res.status(400).json({ error: 'Error desconocido' });
             }
         } finally {

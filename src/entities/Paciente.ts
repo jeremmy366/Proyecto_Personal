@@ -3,50 +3,122 @@ import { TipoIdentificacion } from "./TipoIdentificacion";
 
 @Entity({ name: 'MGM_PACIENTES' })
 export class Paciente {
-    @PrimaryGeneratedColumn({ name: 'ID_PACIENTE' })
+    // Clave primaria generada por secuencia
+    @PrimaryGeneratedColumn({
+        name: 'ID_PACIENTE',
+        type: 'number'
+    })
     idPaciente!: number;
 
+    // Relación con TipoIdentificacion
     @ManyToOne(() => TipoIdentificacion)
     @JoinColumn({ name: 'CODIGO_TIPO_IDENTIFICACION' })
     tipoIdentificacion!: TipoIdentificacion;
 
-    @Column({ name: 'NUMERO_IDENTIFICACION', length: 20 })
+    // Número de identificación (ej: "0999999999")
+    @Column({
+        name: 'NUMERO_IDENTIFICACION',
+        type: 'varchar2',
+        length: 20
+    })
     numeroIdentificacion!: string;
 
-    @Column({ name: 'NOMBRE', length: 100 })
-    nombre!: string;
+    // Campos de nombres y apellidos
+    @Column({
+        name: 'PRIMER_NOMBRE',
+        type: 'varchar2',
+        length: 50
+    })
+    primerNombre!: string;
 
-    @Column({ name: 'APELLIDO', length: 100 })
-    apellido!: string;
+    @Column({
+        name: 'SEGUNDO_NOMBRE',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
+    segundoNombre?: string;
 
-    @Column({ name: 'FECHA_NACIMIENTO' })
-    fechaNacimiento!: Date;
+    @Column({
+        name: 'PRIMER_APELLIDO',
+        type: 'varchar2',
+        length: 50
+    })
+    primerApellido!: string;
 
-    @Column({ name: 'DIRECCION', length: 200 })
-    direccion!: string;
+    @Column({
+        name: 'SEGUNDO_APELLIDO',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
+    segundoApellido?: string;
 
-    @Column({ name: 'TELEFONO', length: 20 })
-    telefono!: string;
+    // Nombre completo (calculado o almacenado)
+    @Column({
+        name: 'NOMBRE_COMPLETO',
+        type: 'varchar2',
+        length: 200
+    })
+    nombreCompleto!: string;
 
-    @Column({ name: 'CORREO_ELECTRONICO', length: 100 })
-    correoElectronico!: string;
+    // Correo electrónico
+    @Column({
+        name: 'EMAIL',
+        type: 'varchar2',
+        length: 100,
+        nullable: true
+    })
+    email?: string;
 
-    @Column({ name: 'ESTADO', length: 1, default: 'A' })
+    // Ruta de la foto (ej: "/uploads/foto.jpg")
+    @Column({
+        name: 'RUTA_FOTO',
+        type: 'varchar2',
+        length: 200,
+        nullable: true
+    })
+    rutaFoto?: string;
+
+    // Estado (S=Activo, N=Inactivo)
+    @Column({
+        name: 'ESTADO',
+        type: 'varchar2',
+        length: 1,
+        default: 'S'
+    })
     estado!: string;
 
-    @Column({ nullable: true })
-    foto?: string;
-
-    // Auditoría
-    @Column({ name: 'FECHA_INGRESO' })
+    // Auditoría: Fecha de ingreso
+    @Column({
+        name: 'FECHA_INGRESO',
+        type: 'timestamp',
+        default: () => 'SYSDATE'
+    })
     fechaIngreso!: Date;
 
-    @Column({ name: 'USUARIO_INGRESO', length: 20 })
+    // Auditoría: Usuario que creó el registro
+    @Column({
+        name: 'USUARIO_INGRESO',
+        type: 'varchar2',
+        length: 50
+    })
     usuarioIngreso!: string;
 
-    @Column({ name: 'FECHA_MODIFICACION', nullable: true })
+    // Auditoría: Fecha de modificación (nullable)
+    @Column({
+        name: 'FECHA_MODIFICACION',
+        type: 'timestamp',
+        nullable: true
+    })
     fechaModificacion!: Date | null;
 
-    @Column({ name: 'USUARIO_MODIFICACION', nullable: true, length: 20 })
+    // Auditoría: Usuario que modificó el registro (nullable)
+    @Column({
+        name: 'USUARIO_MODIFICACION',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
     usuarioModificacion!: string | null;
 }

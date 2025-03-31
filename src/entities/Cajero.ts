@@ -1,36 +1,59 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
 import { UsuarioSistema } from "./UsuarioSistema";
 
-@Entity({ name: 'MGM_CAJEROS' })
+@Entity({ name: 'DAF_CAJEROS' })
 export class Cajero {
-    @PrimaryGeneratedColumn({ name: 'ID_CAJERO' })
-    idCajero!: number;
+    // Clave primaria generada por secuencia
+    @PrimaryGeneratedColumn({
+        name: 'SECUENCIA_CAJERO',
+        type: 'number'
+    })
+    secuenciaCajero!: number;
 
+    // Relación con UsuarioSistema (secuencia_usuario)
     @ManyToOne(() => UsuarioSistema)
-    @JoinColumn({ name: 'CODIGO_USUARIO' })
+    @JoinColumn({ name: 'SECUENCIA_USUARIO' }) // Nombre exacto de la columna
     usuarioSistema!: UsuarioSistema;
 
-    @Column({ name: 'NOMBRE', length: 100 })
-    nombre!: string;
-
-    @Column({ name: 'APELLIDO', length: 100 })
-    apellido!: string;
-
-    @Column({ name: 'CODIGO_SUCURSAL', length: 10 })
-    codigoSucursal!: string;
-
-    @Column({ name: 'ESTADO', length: 1, default: 'A' })
+    // Estado (S=Activo, N=Inactivo)
+    @Column({
+        name: 'ESTADO',
+        type: 'varchar2',
+        length: 1,
+        default: 'S'
+    })
     estado!: string;
 
-    @Column({ name: 'FECHA_INGRESO' })
+    // Auditoría: Fecha de ingreso
+    @Column({
+        name: 'FECHA_INGRESO',
+        type: 'timestamp',
+        default: () => 'SYSDATE'
+    })
     fechaIngreso!: Date;
 
-    @Column({ name: 'USUARIO_INGRESO', length: 20 })
+    // Auditoría: Usuario que creó el registro
+    @Column({
+        name: 'USUARIO_INGRESO',
+        type: 'varchar2',
+        length: 50
+    })
     usuarioIngreso!: string;
 
-    @Column({ name: 'FECHA_MODIFICACION', nullable: true })
+    // Auditoría: Fecha de modificación (nullable)
+    @Column({
+        name: 'FECHA_MODIFICACION',
+        type: 'timestamp',
+        nullable: true
+    })
     fechaModificacion!: Date | null;
 
-    @Column({ name: 'USUARIO_MODIFICACION', nullable: true, length: 20 })
+    // Auditoría: Usuario que modificó el registro (nullable)
+    @Column({
+        name: 'USUARIO_MODIFICACION',
+        type: 'varchar2',
+        length: 50,
+        nullable: true
+    })
     usuarioModificacion!: string | null;
 }
