@@ -1,0 +1,56 @@
+import express, { Request, Response } from 'express';
+import { AppDataSource } from './config/database';
+import authRoutes from './routes/auth';
+import pacienteRoutes from './routes/pacientes';
+import transaccionRoutes from './routes/transaccionesEpago';
+import { errorHandler } from './middlewares/errorHandler';
+import { authMiddleware } from './middlewares/auth';
+import dotenv from 'dotenv';
+import path from 'path';
+import upload from './utils/upload'; // Importación corregida
+
+dotenv.config();
+
+const app = express();
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Rutas estáticas
+app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
+
+// Rutas de salud
+app.get('/health', (req: Request, res: Response) => {
+    res.sendStatus(200);
+});
+
+// Rutas protegidas
+app.use('/autenticacion', authRoutes);
+app.use('/agendamiento/pacientes', authMiddleware, pacienteRoutes);
+app.use('/transacciones', authMiddleware, transaccionRoutes);
+
+// Endpoint de subida de archivos
+app.post('/upload', upload.single('foto'), (req: Request, res: Response) => {
+    if (!req.file) {
+        res.status(400).json({ error: 'Archivo no válido' });
+    } else {
+        res.json({ filename: req.file.filename });
+    }
+});
+
+// Middleware de errores
+app.use(errorHandler);
+
+// Inicialización
+AppDataSource.initialize()
+    .then(() => {
+        console.log('Base de datos conectada');
+        app.listen(process.env.PORT || 3000, () => {
+            console.log(`Servidor en puerto ${process.env.PORT || 3000}`);
+        });
+    })
+    .catch(error => {
+        console.error('Error fatal:', error);
+        process.exit(1);
+    });
