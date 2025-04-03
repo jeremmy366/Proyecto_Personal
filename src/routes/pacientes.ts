@@ -16,28 +16,56 @@ const router = Router();
  * @swagger
  * /agendamiento/pacientes:
  *   post:
- *     description: Crear un nuevo paciente, incluye subida de foto
- *     parameters:
- *       - in: body
- *         name: paciente
- *         description: Datos del paciente
- *         required: true
- *         schema:
- *           type: object
- *           properties:
- *             nombre:
- *               type: string
- *             edad:
- *               type: integer
- *       - in: formData
- *         name: foto
- *         type: file
- *         description: Foto del paciente
+ *     summary: Crear un nuevo paciente
+ *     description: Registra un nuevo paciente con sus datos y opcionalmente una foto.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               primerNombre:
+ *                 type: string
+ *                 example: "Juan"
+ *               segundoNombre:
+ *                 type: string
+ *                 example: "Carlos"
+ *               primerApellido:
+ *                 type: string
+ *                 example: "Pérez"
+ *               segundoApellido:
+ *                 type: string
+ *                 example: "Gómez"
+ *               nombreCompleto:
+ *                 type: string
+ *                 example: "Juan Carlos Pérez Gómez"
+ *               numeroIdentificacion:
+ *                 type: string
+ *                 example: "0999999999"
+ *               email:
+ *                 type: string
+ *                 example: "juan@example.com"
+ *               codigoTipoIdentificacion:
+ *                 type: string
+ *                 example: "CEDULA"
+ *               foto:
+ *                 type: string
+ *                 format: binary
+ *                 description: Foto del paciente (opcional)
  *     responses:
- *       200:
- *         description: Paciente creado correctamente
+ *       201:
+ *         description: Paciente creado con éxito.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Paciente'
  *       400:
- *         description: Error de validación
+ *         description: Error en los datos enviados.
+ *       401:
+ *         description: No autorizado.
  */
 router.post(
     '/',
@@ -55,10 +83,61 @@ router.post(
  * @swagger
  * /agendamiento/pacientes:
  *   get:
- *     description: Listar pacientes con filtros
+ *     summary: Listar pacientes
+ *     description: Obtiene una lista de pacientes con filtros opcionales y paginación.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: numero_identificacion
+ *         schema:
+ *           type: string
+ *         description: Filtrar por número de identificación
+ *       - in: query
+ *         name: nombre_completo
+ *         schema:
+ *           type: string
+ *         description: Filtrar por nombre completo
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *         description: Filtrar por email
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [S, N]
+ *         description: Filtrar por estado (S=Activo, N=Inactivo)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Cantidad de resultados por página
  *     responses:
  *       200:
- *         description: Lista de pacientes
+ *         description: Lista de pacientes obtenida.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 rows:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Paciente'
+ *                 totalRows:
+ *                   type: integer
+ *                   example: 50
+ *       401:
+ *         description: No autorizado.
  */
 router.get(
     '/',
@@ -69,17 +148,31 @@ router.get(
 
 /**
  * @swagger
- * /agendamiento/pacientes/{id}:
+ * /agendamiento/pacientes/{id}/foto:
  *   get:
- *     description: Obtener un paciente por su ID
+ *     summary: Obtener la foto de un paciente
+ *     description: Retorna la foto asociada al paciente especificado.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         type: string
+ *         schema:
+ *           type: integer
+ *         description: ID del paciente
  *     responses:
  *       200:
- *         description: Información del paciente
+ *         description: Foto encontrada.
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Paciente o foto no encontrada.
+ *       401:
+ *         description: No autorizado.
  */
 router.get(
     '/:id/foto',
@@ -131,21 +224,55 @@ router.get(
  * @swagger
  * /agendamiento/pacientes/{id}:
  *   put:
- *     description: Actualizar información de un paciente, incluyendo foto
+ *     summary: Actualizar un paciente
+ *     description: Actualiza los datos de un paciente existente, excluyendo tipo y número de identificación.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         type: string
- *       - in: formData
- *         name: foto
- *         type: file
- *         description: Foto del paciente
+ *         schema:
+ *           type: integer
+ *         description: ID del paciente
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               primerNombre:
+ *                 type: string
+ *                 example: "Juan"
+ *               segundoNombre:
+ *                 type: string
+ *                 example: "Carlos"
+ *               primerApellido:
+ *                 type: string
+ *                 example: "Pérez"
+ *               segundoApellido:
+ *                 type: string
+ *                 example: "Gómez"
+ *               nombreCompleto:
+ *                 type: string
+ *                 example: "Juan Carlos Pérez Gómez"
+ *               email:
+ *                 type: string
+ *                 example: "juan@example.com"
  *     responses:
  *       200:
- *         description: Paciente actualizado correctamente
+ *         description: Paciente actualizado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Paciente'
  *       400:
- *         description: Error de validación
+ *         description: Error en los datos enviados.
+ *       401:
+ *         description: No autorizado.
+ *       404:
+ *         description: Paciente no encontrado.
  */
 router.put(
     '/:id',
@@ -166,15 +293,26 @@ router.put(
  * @swagger
  * /agendamiento/pacientes/{id}:
  *   delete:
- *     description: Eliminar (desactivar) un paciente
+ *     summary: Inactivar un paciente
+ *     description: Cambia el estado del paciente a inactivo (eliminación lógica).
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         type: string
+ *         schema:
+ *           type: integer
+ *         description: ID del paciente
  *     responses:
  *       200:
- *         description: Paciente desactivado correctamente
+ *         description: Paciente inactivado.
+ *       400:
+ *         description: El paciente ya está inactivo.
+ *       401:
+ *         description: No autorizado.
+ *       404:
+ *         description: Paciente no encontrado.
  */
 router.delete(
     '/:id',
@@ -187,19 +325,48 @@ router.delete(
  * @swagger
  * /agendamiento/pacientes/{id}/foto:
  *   post:
- *     description: Subir o actualizar foto de un paciente
+ *     summary: Subir o actualizar la foto de un paciente
+ *     description: Permite subir o reemplazar la foto de un paciente.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         type: string
- *       - in: formData
- *         name: foto
- *         type: file
- *         description: Foto del paciente
+ *         schema:
+ *           type: integer
+ *         description: ID del paciente
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foto:
+ *                 type: string
+ *                 format: binary
+ *                 description: Archivo de la foto
  *     responses:
  *       200:
- *         description: Foto subida o actualizada correctamente
+ *         description: Foto subida con éxito.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Foto subida correctamente"
+ *                 rutaFoto:
+ *                   type: string
+ *                   example: "/uploads/foto123.jpg"
+ *       400:
+ *         description: Error en el archivo enviado.
+ *       401:
+ *         description: No autorizado.
+ *       404:
+ *         description: Paciente no encontrado.
  */
 router.post(
     '/:id/foto',

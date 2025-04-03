@@ -10,9 +10,18 @@ const options = {
             version: '1.0.0',
             description: 'Documentación de la API del servidor',
         },
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
+        security: [{ bearerAuth: [] }], // Aplica autenticación globalmente (opcional)
     },
-    // Asegúrate de que el patrón coincida con las rutas donde están los archivos .ts
-    apis: ['./src/routes/*.ts', './src/app.ts'], // Ajusta este patrón si las rutas están en otro lugar
+    apis: ['./src/routes/*.ts', './src/app.ts'], // Asegúrate de que las rutas sean correctas
 };
 
 const swaggerSpec = swaggerJSDoc(options);

@@ -21,10 +21,19 @@ app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
  * @swagger
  * /health:
  *   get:
- *     description: Verifica que la API esté funcionando correctamente
+ *     summary: Verifica el estado de la API
+ *     description: Retorna un mensaje indicando que la API está funcionando correctamente.
  *     responses:
  *       200:
- *         description: API está funcionando
+ *         description: API está operativa.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "API está funcionando"
  */
 app.get('/health', (req: Request, res: Response) => {
     res.send('Servidor OK');

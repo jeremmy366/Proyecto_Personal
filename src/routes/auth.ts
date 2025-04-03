@@ -9,21 +9,26 @@ const router = Router();
  * /autenticacion/login:
  *   post:
  *     summary: Autenticación de usuario
- *     description: Realiza la autenticación básica y devuelve un Bearer token (JWT).
+ *     description: Autentica a un usuario y devuelve un token JWT si las credenciales son válidas.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - codigoUsuario
+ *               - clave
  *             properties:
  *               codigoUsuario:
  *                 type: string
+ *                 description: Código único del usuario
  *               clave:
  *                 type: string
+ *                 description: Contraseña del usuario
  *     responses:
  *       200:
- *         description: Login exitoso, devuelve el Bearer token.
+ *         description: Autenticación exitosa, devuelve el token.
  *         content:
  *           application/json:
  *             schema:
@@ -31,9 +36,10 @@ const router = Router();
  *               properties:
  *                 token:
  *                   type: string
- *                   description: El token JWT de acceso.
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                   description: Token JWT de acceso
  *       400:
- *         description: Error en la validación de datos.
+ *         description: Faltan datos requeridos.
  *       401:
  *         description: Credenciales inválidas.
  */

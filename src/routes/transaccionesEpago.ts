@@ -10,24 +10,44 @@ const router = Router();
  * @swagger
  * /transacciones:
  *   post:
- *     description: Crear una nueva transacción de ePago
- *     parameters:
- *       - in: body
- *         name: transaccion
- *         description: Datos de la transacción
- *         required: true
- *         schema:
- *           type: object
- *           properties:
- *             monto:
- *               type: integer
- *             metodoPago:
- *               type: string
+ *     summary: Crear una transacción Epago
+ *     description: Registra una nueva transacción Epago.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               secuenciaCajero:
+ *                 type: integer
+ *                 example: 1
+ *               valor:
+ *                 type: number
+ *                 example: 100.50
+ *               tipoPago:
+ *                 type: string
+ *                 example: "Tarjeta"
+ *               referencia:
+ *                 type: string
+ *                 example: "REF123"
+ *               fechaSolicitud:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2024-08-10T17:21:50Z"
  *     responses:
- *       200:
- *         description: Transacción creada correctamente
+ *       201:
+ *         description: Transacción creada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TransaccionEpago'
  *       400:
- *         description: Error de validación
+ *         description: Error en los datos enviados.
+ *       401:
+ *         description: No autorizado.
  */
 router.post(
     '/',
@@ -49,37 +69,120 @@ router.post(
  * @swagger
  * /transacciones:
  *   get:
- *     description: Obtener todas las transacciones
+ *     summary: Listar transacciones Epago
+ *     description: Obtiene una lista de transacciones con filtros y paginación.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: fechaDesde
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Fecha de inicio (ej. 10/08/2024 00:00:00)
+ *       - in: query
+ *         name: fechaHasta
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Fecha de fin (ej. 10/08/2024 23:59:59)
+ *       - in: query
+ *         name: codigoEpago
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por código Epago
+ *       - in: query
+ *         name: secuenciaCajero
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por secuencia de cajero
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Cantidad de resultados por página
  *     responses:
  *       200:
- *         description: Lista de transacciones
+ *         description: Lista de transacciones obtenida.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 rows:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TransaccionEpago'
+ *                 totalRows:
+ *                   type: integer
+ *                   example: 25
+ *       400:
+ *         description: Fechas inválidas o faltantes.
+ *       401:
+ *         description: No autorizado.
  */
 router.get('/', authMiddleware, TransaccionEpagoController.obtenerTransacciones);
 
 /**
  * @swagger
- * /transacciones/{idTransaccion}:
+ * /transacciones/{codigoEpago}:
  *   put:
- *     description: Actualizar el estado de una transacción
+ *     summary: Actualizar una transacción Epago
+ *     description: Modifica los datos de una transacción existente.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: idTransaccion
- *         required: true
- *         type: string
- *       - in: body
- *         name: estado
- *         description: Nuevo estado de la transacción
+ *         name: codigoEpago
  *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             estado:
- *               type: string
+ *           type: integer
+ *         description: Código Epago de la transacción
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               secuenciaCajero:
+ *                 type: integer
+ *                 example: 1
+ *               valor:
+ *                 type: number
+ *                 example: 100.50
+ *               tipoPago:
+ *                 type: string
+ *                 example: "Tarjeta"
+ *               referencia:
+ *                 type: string
+ *                 example: "REF123"
+ *               fechaSolicitud:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2024-08-10T17:21:50Z"
  *     responses:
  *       200:
- *         description: Transacción actualizada correctamente
+ *         description: Transacción actualizada.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TransaccionEpago'
  *       400:
- *         description: Error de validación
+ *         description: Error en los datos enviados.
+ *       401:
+ *         description: No autorizado.
+ *       404:
+ *         description: Transacción no encontrada.
  */
 router.put(
     '/:codigoEpago',
@@ -97,6 +200,29 @@ router.put(
     TransaccionEpagoController.actualizarTransaccion // Crea este método
 );
 
+/**
+ * @swagger
+ * /transacciones/{codigoEpago}:
+ *   delete:
+ *     summary: Inactivar una transacción Epago
+ *     description: Cambia el estado de la transacción a inactivo (eliminación lógica).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: codigoEpago
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Código Epago de la transacción
+ *     responses:
+ *       200:
+ *         description: Transacción inactivada.
+ *       401:
+ *         description: No autorizado.
+ *       404:
+ *         description: Transacción no encontrada.
+ */
 router.delete(
     '/:codigoEpago',
     authMiddleware,
