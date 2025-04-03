@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors'; // Importar cors
 import { AppDataSource } from './config/database';
 import authRoutes from './routes/auth';
 import pacienteRoutes from './routes/pacientes';
@@ -8,22 +9,14 @@ import { authMiddleware } from './middlewares/auth';
 import dotenv from 'dotenv';
 import path from 'path';
 import upload from './utils/upload';
-
-import { setupSwagger } from './config/swagger';  
-
+import { setupSwagger } from './config/swagger';
 dotenv.config();
-
 const app = express();
-
+app.use(cors()); // Usar cors para permitir todas las solicitudes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-
-setupSwagger(app); 
-
-
+setupSwagger(app);
 app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
-
 /**
  * @swagger
  * /health:
@@ -33,16 +26,13 @@ app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
  *       200:
  *         description: API está funcionando
  */
-
 app.get('/health', (req: Request, res: Response) => {
     res.sendStatus(200);
 });
-
 // Rutas protegidas
 app.use('/autenticacion', authRoutes);
 app.use('/agendamiento/pacientes', authMiddleware, pacienteRoutes);
 app.use('/transacciones', authMiddleware, transaccionRoutes);
-
 // Endpoint de subida de archivos
 app.post('/upload', upload.single('foto'), (req: Request, res: Response) => {
     if (!req.file) {
@@ -51,10 +41,8 @@ app.post('/upload', upload.single('foto'), (req: Request, res: Response) => {
         res.json({ filename: req.file.filename });
     }
 });
-
 // Middleware de errores
 app.use(errorHandler);
-
 // Inicialización
 AppDataSource.initialize()
     .then(() => {
