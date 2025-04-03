@@ -27,7 +27,7 @@ app.use('/fotos', express.static(path.resolve(__dirname, '../fotosPaciente')));
  *         description: API está funcionando
  */
 app.get('/health', (req: Request, res: Response) => {
-    res.sendStatus(200);
+    res.send('Servidor OK');
 });
 // Rutas protegidas
 app.use('/autenticacion', authRoutes);

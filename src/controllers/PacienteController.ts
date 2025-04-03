@@ -1,51 +1,85 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database';
 import { Paciente } from '../entities/Paciente';
 import { QueryRunner } from 'typeorm';
+import { TipoIdentificacion } from '../entities/TipoIdentificacion';
+import { formatDate } from '../utils/dateFormat';
 
 export class PacienteController {
     // Crear nuevo paciente
-    static async crearPaciente(req: Request, res: Response): Promise<void> {
+    static async crearPaciente(req: Request, res: Response, next: NextFunction): Promise<void> {
+        const queryRunner = AppDataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
         try {
-            const pacienteData = req.body;
-
-            const paciente = AppDataSource.getRepository(Paciente).create({
-                ...pacienteData,
+            const { tipoIdentificacion, email, ...resto } = req.body;
+            // Validar que exista el tipo de identificación
+            const tipoRepo = queryRunner.manager.getRepository(TipoIdentificacion);
+            const tipo = await tipoRepo.findOne({ where: { codigoTipoIdentificacion: tipoIdentificacion } });
+            if (!tipo) {
+                throw new Error('Tipo de identificación no existe');
+            }
+            const pacienteRepo = queryRunner.manager.getRepository(Paciente);
+            const paciente = pacienteRepo.create({
+                ...resto,
+                email, // se validó que es email
+                tipoIdentificacion: tipo,
                 estado: 'S',
                 fechaIngreso: new Date(),
                 usuarioIngreso: (req as any).user.userId
             });
-
-            await AppDataSource.getRepository(Paciente).save(paciente);
+            await pacienteRepo.save(paciente);
+            await queryRunner.commitTransaction();
             res.status(201).json(paciente);
         } catch (error) {
-            res.status(500).json({ error: 'Error al crear paciente' });
+            await queryRunner.rollbackTransaction();
+            next(error);
+        } finally {
+            await queryRunner.release();
         }
     }
+    
 
     // Listar pacientes con filtros
-    static async listarPacientes(req: Request, res: Response): Promise<void> {
+    static async listarPacientes(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const { nombreCompleto, estado } = req.query;
+            const { numero_identificacion, nombre_completo, email, estado, page = '1', limit = '10' } = req.query;
+            const pageNum = parseInt(page as string, 10);
+            const limitNum = parseInt(limit as string, 10);
+            const offset = (pageNum - 1) * limitNum;
 
             const query = AppDataSource.getRepository(Paciente)
                 .createQueryBuilder('p')
                 .leftJoinAndSelect('p.tipoIdentificacion', 'tipoIdentificacion');
 
-            if (nombreCompleto) {
-                query.andWhere('p.nombreCompleto LIKE :nombre', {
-                    nombre: `%${nombreCompleto}%`
-                });
+            // Filtros
+            if (numero_identificacion) {
+                query.andWhere('p.numeroIdentificacion = :numero', { numero: numero_identificacion });
             }
-
+            if (nombre_completo) {
+                query.andWhere('p.nombreCompleto LIKE :nombre', { nombre: `%${nombre_completo}%` });
+            }
+            if (email) {
+                query.andWhere('p.email = :email', { email });
+            }
+            // Por defecto, si no se especifica estado, traer activos ('S')
             if (estado) {
                 query.andWhere('p.estado = :estado', { estado });
+            } else {
+                query.andWhere('p.estado = :estado', { estado: 'S' });
             }
 
-            const pacientes = await query.getMany();
-            res.status(200).json(pacientes);
+            // Paginación
+            query.skip(offset).take(limitNum);
+
+            const [pacientes, totalRows] = await query.getManyAndCount();
+
+            res.status(200).json({
+                rows: pacientes,
+                totalRows
+            });
         } catch (error) {
-            res.status(500).json({ error: 'Error al listar pacientes' });
+            next(error);
         }
     }
 
@@ -57,7 +91,13 @@ export class PacienteController {
                 where: { idPaciente: parseInt(id) },
                 relations: ['tipoIdentificacion']
             });
-            res.status(200).json(paciente);
+            // Convertir fechas antes de responder
+            const pacienteResponse = {
+                ...paciente,
+                fechaIngreso: formatDate(paciente.fechaIngreso),
+                fechaModificacion: paciente.fechaModificacion ? formatDate(paciente.fechaModificacion) : null
+            };
+            res.status(200).json(pacienteResponse);
         } catch (error: unknown) {
             if (error instanceof Error) {
                 res.status(404).json({ error: `Paciente no encontrado: ${error.message}` });
@@ -87,7 +127,6 @@ export class PacienteController {
                 'primerApellido',
                 'segundoApellido',
                 'nombreCompleto',
-                'numeroIdentificacion',
                 'email'
             ];
 

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { TransaccionEpagoController } from '../controllers/TransaccionEpagoController';
 import { authMiddleware } from '../middlewares/auth';
+import { body } from 'express-validator';
+import moment from 'moment';
 
 const router = Router();
 
@@ -27,7 +29,21 @@ const router = Router();
  *       400:
  *         description: Error de validación
  */
-router.post('/', authMiddleware, TransaccionEpagoController.crearTransaccion);
+router.post(
+    '/',
+    authMiddleware,
+    [
+        body('secuenciaCajero').notEmpty().withMessage('El codigo del cajero es obligatorio'),
+        body('fechaSolicitud').custom(value => {
+            if (!moment(value, 'DD/MM/YYYY HH:mm:ss', true).isValid()) {
+                throw new Error('La fechaSolicitud debe tener el formato DD/MM/YYYY HH:mm:ss');
+            }
+            return true;
+        }),
+        body('valor').isFloat({ gt: 0 }).withMessage('El valor debe ser mayor a 0')
+    ],
+    TransaccionEpagoController.crearTransaccion
+);
 
 /**
  * @swagger
@@ -65,6 +81,26 @@ router.get('/', authMiddleware, TransaccionEpagoController.obtenerTransacciones)
  *       400:
  *         description: Error de validación
  */
-router.put('/:idTransaccion', authMiddleware, TransaccionEpagoController.actualizarEstado);
+router.put(
+    '/:codigoEpago',
+    authMiddleware,
+    [
+        body('secuenciaCajero').notEmpty().withMessage('El codigo del cajero es obligatorio'),
+        body('fechaSolicitud').custom(value => {
+            if (!moment(value, 'DD/MM/YYYY HH:mm:ss', true).isValid()) {
+                throw new Error('La fechaSolicitud debe tener el formato DD/MM/YYYY HH:mm:ss');
+            }
+            return true;
+        }),
+        body('valor').isFloat({ gt: 0 }).withMessage('El valor debe ser mayor a 0')
+    ],
+    TransaccionEpagoController.actualizarTransaccion // Crea este método
+);
+
+router.delete(
+    '/:codigoEpago',
+    authMiddleware,
+    TransaccionEpagoController.eliminarTransaccion
+);
 
 export default router;
