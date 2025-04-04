@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppDataSource } from '../config/database';
 import { UsuarioSistema } from '../entities/UsuarioSistema';
+import { Admin } from 'typeorm';
 
 export class AuthController {
     static async login(req: Request, res: Response): Promise<void> { // Aseguramos que el tipo sea Promise<void>
@@ -19,7 +20,7 @@ export class AuthController {
 
         // Si el usuario es encontrado y la clave es correcta, genera el token
         const token = jwt.sign(
-            { userId: user.secuenciaUsuario },
+            { userId: user.secuenciaUsuario, role: 'admin' },
             process.env.JWT_SECRET!,
             { expiresIn: '1h' }
         );

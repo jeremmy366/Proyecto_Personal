@@ -50,7 +50,7 @@ const router = Router();
  *                 example: "juan@example.com"
  *               codigoTipoIdentificacion:
  *                 type: string
- *                 example: "CEDULA"
+ *                 example: "CED"
  *               foto:
  *                 type: string
  *                 format: binary
@@ -58,10 +58,6 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Paciente creado con éxito.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Paciente'
  *       400:
  *         description: Error en los datos enviados.
  *       401:
@@ -73,8 +69,7 @@ router.post(
     checkRole('admin', 'recepcionista'),
     // Validaciones:
     body('email').isEmail().withMessage('El email no es válido'),
-    body('tipoIdentificacion').notEmpty().withMessage('El tipo de identificación es requerido'),
-    // Otros validadores si es necesario
+    body('codigoTipoIdentificacion').notEmpty().withMessage('El tipo de identificación es requerido'),
     upload.single('foto'),
     PacienteController.crearPaciente
 );

@@ -8,6 +8,7 @@ import moment from 'moment';
 
 export class TransaccionEpagoController {
     // Crear nueva transacción
+    // Crear nueva transacción
     static async crearTransaccion(req: Request, res: Response, next: NextFunction): Promise<void> {
         const queryRunner = AppDataSource.createQueryRunner();
         await queryRunner.connect();
@@ -16,13 +17,13 @@ export class TransaccionEpagoController {
             const { secuenciaCajero, valor, tipoPago, referencia, fechaSolicitud } = req.body;
             // Validar existencia del cajero
             const cajero = await queryRunner.manager.findOne(Cajero, {
-                where: { secuenciaCajero: secuenciaCajero }
+                where: { secuenciaCajero }
             });
             if (!cajero) {
                 throw new Error('Cajero no encontrado');
             }
-            // Convertir fechaSolicitud a Date
-            const fechaSolicitudDate = moment(fechaSolicitud, 'DD/MM/YYYY HH:mm:ss').toDate();
+            // Convertir fechaSolicitud a Date usando el formato ISO
+            const fechaSolicitudDate = moment(fechaSolicitud).toDate();
             // Crear transacción
             const transaccion = queryRunner.manager.create(TransaccionEpago, {
                 cajero: cajero,
@@ -30,7 +31,7 @@ export class TransaccionEpagoController {
                 tipoPago: tipoPago,
                 referencia: referencia,
                 fechaSolicitud: fechaSolicitudDate,
-                estado: 'P', // Pendiente por defecto
+                estado: 'S',
                 fechaIngreso: new Date(),
                 usuarioIngreso: (req as any).user.userId
             });
@@ -41,7 +42,7 @@ export class TransaccionEpagoController {
                 estado: transaccion.estado,
                 valor: transaccion.valor
             });
-        } catch (error: unknown) {
+        } catch (error) {
             await queryRunner.rollbackTransaction();
             next(error);
         } finally {

@@ -12,17 +12,18 @@ export class PacienteController {
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            const { tipoIdentificacion, email, ...resto } = req.body;
-            // Validar que exista el tipo de identificación
+            // Se espera que el cliente envíe "codigoTipoIdentificacion"
+            const { codigoTipoIdentificacion, email, ...resto } = req.body;
+            // Validar que exista el tipo de identificación usando el campo correcto
             const tipoRepo = queryRunner.manager.getRepository(TipoIdentificacion);
-            const tipo = await tipoRepo.findOne({ where: { codigoTipoIdentificacion: tipoIdentificacion } });
+            const tipo = await tipoRepo.findOne({ where: { codigoTipoIdentificacion } });
             if (!tipo) {
                 throw new Error('Tipo de identificación no existe');
             }
             const pacienteRepo = queryRunner.manager.getRepository(Paciente);
             const paciente = pacienteRepo.create({
                 ...resto,
-                email, // se validó que es email
+                email,
                 tipoIdentificacion: tipo,
                 estado: 'S',
                 fechaIngreso: new Date(),

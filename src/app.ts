@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors'; // Importar cors
+import cors from 'cors';
 import { AppDataSource } from './config/database';
 import authRoutes from './routes/auth';
 import pacienteRoutes from './routes/pacientes';
@@ -12,7 +12,7 @@ import upload from './utils/upload';
 import { setupSwagger } from './config/swagger';
 dotenv.config();
 const app = express();
-app.use(cors()); // Usar cors para permitir todas las solicitudes
+app.use(cors()); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 setupSwagger(app);

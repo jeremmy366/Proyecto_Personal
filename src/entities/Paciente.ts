@@ -6,7 +6,7 @@ export class Paciente {
     // Clave primaria generada por secuencia
     @PrimaryGeneratedColumn({
         name: 'ID_PACIENTE',
-        type: 'number'
+        type: 'number',
     })
     idPaciente!: number;
 

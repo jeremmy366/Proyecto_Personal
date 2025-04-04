@@ -40,10 +40,6 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Transacción creada.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/TransaccionEpago'
  *       400:
  *         description: Error en los datos enviados.
  *       401:
@@ -53,10 +49,10 @@ router.post(
     '/',
     authMiddleware,
     [
-        body('secuenciaCajero').notEmpty().withMessage('El codigo del cajero es obligatorio'),
+        body('secuenciaCajero').notEmpty().withMessage('El código del cajero es obligatorio'),
         body('fechaSolicitud').custom(value => {
-            if (!moment(value, 'DD/MM/YYYY HH:mm:ss', true).isValid()) {
-                throw new Error('La fechaSolicitud debe tener el formato DD/MM/YYYY HH:mm:ss');
+            if (!moment(value).isValid()) {
+                throw new Error('La fechaSolicitud no es una fecha válida');
             }
             return true;
         }),
