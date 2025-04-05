@@ -56,7 +56,7 @@ export class TransaccionEpagoController {
         await queryRunner.startTransaction();
         try {
             const { codigoEpago } = req.params;
-            const { secuenciaCajero, fechaSolicitud, valor, tipoPago, referencia } = req.body;
+            const { secuenciaCajero, fechaSolicitud, valor, tipoPago, referencia, usuario_ingresado } = req.body;
             const transaccionRepo = queryRunner.manager.getRepository(TransaccionEpago);
             const transaccion = await transaccionRepo.findOneOrFail({ where: { codigoEpago: parseInt(codigoEpago) } });
 
@@ -70,6 +70,7 @@ export class TransaccionEpagoController {
             transaccion.cajero = cajero;
             transaccion.fechaSolicitud = moment(fechaSolicitud, 'DD/MM/YYYY HH:mm:ss').toDate();
             transaccion.valor = valor;
+            transaccion.usuarioIngreso = usuario_ingresado;
             transaccion.fechaModificacion = new Date();
             transaccion.usuarioModificacion = (req as any).user.userId;
 
@@ -87,48 +88,50 @@ export class TransaccionEpagoController {
     // Obtener transacciones con filtros
     static async obtenerTransacciones(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            // Extraer parámetros y paginación
             const { fechaDesde, fechaHasta, codigoEpago, secuenciaCajero, page = '1', limit = '10' } = req.query;
-            if (!fechaDesde || !fechaHasta) {
-                // Enviar la respuesta de error sin retornarla explícitamente
-                res.status(400).json({ error: 'fechaDesde y fechaHasta son obligatorios' });
-                return; // Detener ejecución aquí después de enviar la respuesta
-            }
             const pageNum = parseInt(page as string, 10);
             const limitNum = parseInt(limit as string, 10);
             const offset = (pageNum - 1) * limitNum;
 
-            // Convertir fechas del formato especificado a Date usando moment
-            const inicio = moment(fechaDesde as string, 'DD/MM/YYYY HH:mm:ss').toDate();
-            const fin = moment(fechaHasta as string, 'DD/MM/YYYY HH:mm:ss').toDate();
-
+            // Crear el query builder base
             const query = AppDataSource.getRepository(TransaccionEpago)
                 .createQueryBuilder('t')
-                .leftJoinAndSelect('t.cajero', 'cajero')
-                .where('t.fechaSolicitud BETWEEN :inicio AND :fin', { inicio, fin });
+                .leftJoinAndSelect('t.cajero', 'cajero');
 
+            // Si se envían ambas fechas, aplicar filtro por rango
+            if (fechaDesde && fechaHasta) {
+                const inicio = moment(fechaDesde as string, 'DD/MM/YYYY HH:mm:ss').toDate();
+                const fin = moment(fechaHasta as string, 'DD/MM/YYYY HH:mm:ss').toDate();
+                query.where('t.fechaSolicitud BETWEEN :inicio AND :fin', { inicio, fin });
+            }
+
+            // Filtros opcionales
             if (codigoEpago) {
                 query.andWhere('t.codigoEpago = :codigoEpago', { codigoEpago });
             }
             if (secuenciaCajero) {
                 query.andWhere('cajero.secuenciaCajero = :secuenciaCajero', { secuenciaCajero });
             }
-            // Solo activos
+
+            // Siempre filtrar solo los activos
             query.andWhere('t.estado = :estado', { estado: 'S' });
-            // Orden descendente
+
+            // Orden y paginación
             query.orderBy('t.fechaIngreso', 'DESC');
-            // Paginación
             query.skip(offset).take(limitNum);
 
             const [transacciones, totalRows] = await query.getManyAndCount();
 
-            // Transformar respuesta: formatear fechas y convertir estado a booleano (S = true, N = false)
             const rows = transacciones.map(t => ({
-                ...t,
+                codigo_epago: t.codigoEpago, // o si la propiedad en la entidad es 'codigo_epago', úsala directamente
+                fecha_solicitud: formatDate(t.fechaSolicitud),
+                secuencia_cajero: t.cajero ? t.cajero.secuenciaCajero : null,
+                usuario_ingresado: t.usuarioIngreso,
+                valor: t.valor,
                 estado: t.estado === 'S',
-                fechaSolicitud: formatDate(t.fechaSolicitud),
-                fechaIngreso: formatDate(t.fechaIngreso),
-                fechaModificacion: t.fechaModificacion ? formatDate(t.fechaModificacion) : null
+                fecha_ingreso: formatDate(t.fechaIngreso),
+                fecha_modificacion: t.fechaModificacion ? formatDate(t.fechaModificacion) : null,
+                usuario_modificacion: t.usuarioModificacion
             }));
 
             res.status(200).json({ rows, totalRows });

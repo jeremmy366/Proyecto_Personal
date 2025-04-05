@@ -72,14 +72,14 @@ router.post(
  *     parameters:
  *       - in: query
  *         name: fechaDesde
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
  *           format: date-time
  *         description: Fecha de inicio (ej. 10/08/2024 00:00:00)
  *       - in: query
  *         name: fechaHasta
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
  *           format: date-time
@@ -191,7 +191,8 @@ router.put(
             }
             return true;
         }),
-        body('valor').isFloat({ gt: 0 }).withMessage('El valor debe ser mayor a 0')
+        body('valor').isFloat({ gt: 0 }).withMessage('El valor debe ser mayor a 0'),
+        body('usuario_ingresado').notEmpty().withMessage('El usuario es obligatorio')
     ],
     TransaccionEpagoController.actualizarTransaccion // Crea este método
 );
