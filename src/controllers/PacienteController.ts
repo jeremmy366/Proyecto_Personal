@@ -196,27 +196,35 @@ export class PacienteController {
     static async subirFoto(req: Request, res: Response): Promise<void> {
         try {
             const { id } = req.params;
-            const paciente = await AppDataSource.getRepository(Paciente).findOneOrFail({
+            const pacienteRepo = AppDataSource.getRepository(Paciente);
+            const paciente = await pacienteRepo.findOneOrFail({
                 where: { idPaciente: parseInt(id) }
             });
 
             if (!req.file) {
-                res.status(400).json({ error: 'Archivo no válido' });
+                res.status(400).json({ error: 'No se proporcionó un archivo válido' });
                 return;
             }
 
-            paciente.rutaFoto = `/fotos/${req.file.filename}`;
-            await AppDataSource.getRepository(Paciente).save(paciente);
+            const filePath = `/fotos/${req.file.filename}`;
+            paciente.rutaFoto = filePath;
+
+            await pacienteRepo.save(paciente);
 
             res.status(200).json({
                 message: 'Foto actualizada',
                 rutaFoto: paciente.rutaFoto
             });
         } catch (error: unknown) {
+            console.error('Error al subir foto:', error); // Agrega logging para depuración
             if (error instanceof Error) {
-                res.status(500).json({ error: error.message });
+                if (error.message.includes('findOneOrFail')) {
+                    res.status(404).json({ error: 'Paciente no encontrado' });
+                } else {
+                    res.status(500).json({ error: `Error al procesar la foto: ${error.message}` });
+                }
             } else {
-                res.status(500).json({ error: 'Error desconocido' });
+                res.status(500).json({ error: 'Error desconocido al subir la foto' });
             }
         }
     }
