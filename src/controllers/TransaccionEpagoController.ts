@@ -14,7 +14,7 @@ export class TransaccionEpagoController {
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            const { secuenciaCajero, valor, tipoPago, referencia, fechaSolicitud } = req.body;
+            const { secuenciaCajero, valor, tipoPago, referencia, fechaSolicitud, usuario_ingresado } = req.body;
             // Validar existencia del cajero
             const cajero = await queryRunner.manager.findOne(Cajero, {
                 where: { secuenciaCajero }
@@ -33,7 +33,7 @@ export class TransaccionEpagoController {
                 fechaSolicitud: fechaSolicitudDate,
                 estado: 'S',
                 fechaIngreso: new Date(),
-                usuarioIngreso: (req as any).user.userId
+                usuarioIngreso: usuario_ingresado
             });
             await queryRunner.manager.save(transaccion);
             await queryRunner.commitTransaction();
